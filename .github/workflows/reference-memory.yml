@@ -1,0 +1,35 @@
+name: Fixed-Genome Memory Reference
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "src/memorydna/reference_memory.py"
+      - "run_reference_memory.py"
+      - ".github/workflows/reference-memory.yml"
+
+jobs:
+  reference:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      MPLBACKEND: Agg
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -e ".[dev]"
+      - name: Regression tests
+        run: pytest -q
+      - name: Fixed-genome channel benchmark
+        run: python run_reference_memory.py
+      - name: Print best strategies
+        run: cat results/reference-memory/reference_best.csv
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fixed-genome-memory-reference-seed7
+          path: results/reference-memory
+          retention-days: 90
