@@ -1,0 +1,54 @@
+name: Final Paired Temporal-Pattern Audit
+
+on:
+  workflow_dispatch:
+    inputs:
+      seed:
+        description: "Base seed"
+        required: true
+        default: "7"
+  push:
+    branches:
+      - feature/dual-memory-final-study
+    paths:
+      - "src/memorydna/paired_pattern_final.py"
+      - ".github/workflows/final-paired-pattern.yml"
+
+jobs:
+  paired-pattern:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      MPLBACKEND: Agg
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install
+        run: pip install -e ".[dev]"
+      - name: Validate
+        run: pytest -q
+      - name: Run paired temporal-pattern audit
+        shell: bash
+        run: |
+          SEED="${{ github.event.inputs.seed || '7' }}"
+          python -m memorydna.paired_pattern_final --seed "$SEED" --population 140 --generations 500 --replicates 8 --output "results/final-paired-pattern-seed${SEED}"
+      - name: Audit
+        shell: bash
+        run: |
+          SEED="${{ github.event.inputs.seed || '7' }}"
+          ROOT="results/final-paired-pattern-seed${SEED}"
+          test -s "$ROOT/paired_pattern_summary.csv"
+          test -s "$ROOT/paired_pattern_aggregate.csv"
+          test -s "$ROOT/paired_pattern_contrasts.csv"
+          test -s "$ROOT/metadata.json"
+          cat "$ROOT/paired_pattern_aggregate.csv"
+          echo "=== contrasts ==="
+          cat "$ROOT/paired_pattern_contrasts.csv"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: final-paired-pattern-seed${{ github.event.inputs.seed || '7' }}
+          path: results/final-paired-pattern-seed${{ github.event.inputs.seed || '7' }}
+          retention-days: 90
