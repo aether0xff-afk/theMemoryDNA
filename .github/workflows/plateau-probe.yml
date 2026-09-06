@@ -10,8 +10,12 @@ on:
   push:
     branches: [main]
     paths:
+      - "src/memorydna/model.py"
+      - "src/memorydna/ga.py"
+      - "src/memorydna/environment.py"
       - "src/memorydna/plateau_probe.py"
       - "run_plateau_probe.py"
+      - "tests/test_model.py"
       - "tests/test_plateau_probe.py"
       - ".github/workflows/plateau-probe.yml"
 
