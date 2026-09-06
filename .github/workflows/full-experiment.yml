@@ -1,0 +1,70 @@
+name: Full Epi-GA Experiment
+
+on:
+  workflow_dispatch:
+    inputs:
+      seed:
+        description: "Base random seed"
+        required: true
+        default: "7"
+        type: string
+      preset:
+        description: "Experiment preset"
+        required: true
+        default: "full"
+        type: choice
+        options:
+          - full
+          - quick
+          - smoke
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/full-experiment.yml"
+
+jobs:
+  full-experiment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    env:
+      MPLBACKEND: Agg
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install project
+        run: pip install -e ".[dev]"
+
+      - name: Validate model
+        run: pytest -q
+
+      - name: Run experiment
+        shell: bash
+        run: |
+          PRESET="${{ github.event.inputs.preset || 'full' }}"
+          SEED="${{ github.event.inputs.seed || '7' }}"
+          echo "Running preset=${PRESET}, seed=${SEED}"
+          python run_experiments.py \
+            --preset "${PRESET}" \
+            --seed "${SEED}" \
+            --output "results/actions-${PRESET}-seed${SEED}"
+
+      - name: Show result files
+        if: always()
+        run: find results -maxdepth 3 -type f -print | sort || true
+
+      - name: Upload experiment results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: epi-ga-${{ github.event.inputs.preset || 'full' }}-seed${{ github.event.inputs.seed || '7' }}
+          path: results/
+          if-no-files-found: error
+          retention-days: 90
