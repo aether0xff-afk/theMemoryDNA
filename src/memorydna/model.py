@@ -113,12 +113,18 @@ def simulate_development(
     b_opt: float,
     params: SilvaParameters,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Simulate one generation of development for a vectorized population.
+    """Simulate one generation and integrate Silva Eq. 8A over development.
+
+    Fitness must include the zygotic state at t=0. Directly inherited sRNA is
+    valuable precisely because it changes early-life fitness, so sampling only
+    after each completed cell division systematically removes the benefit of
+    r_germ. We therefore integrate log W continuously over [0,c] using a
+    trapezoidal rule over the same RK4 substeps used for Eq. 1.
 
     Returns
     -------
     log_lifetime_fitness:
-        Mean log fitness over development, i.e. log of the geometric mean.
+        (1/c) * integral_0^c log W(t) dt, i.e. log geometric-mean lifetime fitness.
     n_final:
         Adult/germline sRNA abundance at the end of development.
     """
@@ -131,10 +137,11 @@ def simulate_development(
     substeps = max(1, int(params.rk4_substeps))
     dt = 1.0 / substeps
     total_steps = params.cell_divisions * substeps
-    logw_sum = np.zeros_like(n, dtype=float)
+    logw_integral = np.zeros_like(n, dtype=float)
 
     for step in range(total_steps):
         t0 = step * dt
+        logw_start = log_instantaneous_fitness(n, epsilon, p_b, params)
 
         def rhs(x: np.ndarray, t: float) -> np.ndarray:
             b_t = effective_amplification(
@@ -150,13 +157,13 @@ def simulate_development(
         k2 = rhs(n + 0.5 * dt * k1, t0 + 0.5 * dt)
         k3 = rhs(n + 0.5 * dt * k2, t0 + 0.5 * dt)
         k4 = rhs(n + dt * k3, t0 + dt)
-        n = np.maximum(n + (dt / 6.0) * (k1 + 2.0 * k2 + 2.0 * k3 + k4), 0.0)
+        n_next = np.maximum(n + (dt / 6.0) * (k1 + 2.0 * k2 + 2.0 * k3 + k4), 0.0)
 
-        # Fitness is sampled uniformly through developmental time. The mean of
-        # log fitness is the log geometric mean used by Silva et al. (Eq. 8A).
-        logw_sum += log_instantaneous_fitness(n, epsilon, p_b, params)
+        logw_end = log_instantaneous_fitness(n_next, epsilon, p_b, params)
+        logw_integral += 0.5 * (logw_start + logw_end) * dt
+        n = n_next
 
-    return logw_sum / total_steps, n
+    return logw_integral / params.cell_divisions, n
 
 
 def _reference_lifetime_logfitness_for_b(b: float, epsilon: float, params: SilvaParameters) -> float:
