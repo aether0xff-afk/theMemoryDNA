@@ -1,0 +1,33 @@
+name: Paired Temporal Pattern Robustness
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "src/memorydna/paired_pattern.py"
+      - "run_paired_pattern.py"
+      - ".github/workflows/paired-pattern.yml"
+
+jobs:
+  paired-pattern:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      MPLBACKEND: Agg
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -e ".[dev]"
+      - name: Regression tests
+        run: pytest -q
+      - name: Paired pattern full run
+        run: python run_paired_pattern.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: paired-temporal-pattern-full-seed7
+          path: results/paired-pattern
+          retention-days: 90
