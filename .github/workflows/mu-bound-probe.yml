@@ -1,0 +1,55 @@
+name: mu-bound Sensitivity Probe
+
+on:
+  workflow_dispatch:
+    inputs:
+      seed:
+        description: "Random seed"
+        required: true
+        default: "7"
+  push:
+    branches: [main]
+    paths:
+      - "src/memorydna/mu_bound_probe.py"
+      - "run_mu_bound_probe.py"
+      - ".github/workflows/mu-bound-probe.yml"
+
+jobs:
+  mu-bound-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install project
+        run: pip install -e ".[dev]"
+
+      - name: Validate repository
+        run: pytest -q
+
+      - name: Run mu-bound sensitivity probe
+        env:
+          PROBE_SEED: ${{ github.event.inputs.seed || '7' }}
+        run: python run_mu_bound_probe.py --seed "$PROBE_SEED" --output results/mu-bound-probe-seed${PROBE_SEED}
+
+      - name: Print main findings
+        env:
+          PROBE_SEED: ${{ github.event.inputs.seed || '7' }}
+        run: |
+          echo "=== plateau model by mu lower bound ==="
+          cat results/mu-bound-probe-seed${PROBE_SEED}/mu_bound_plateau_models.json
+          echo "=== aggregate ==="
+          cat results/mu-bound-probe-seed${PROBE_SEED}/mu_bound_aggregate.csv
+
+      - name: Upload mu-bound probe results
+        uses: actions/upload-artifact@v4
+        with:
+          name: mu-bound-sensitivity-seed${{ github.event.inputs.seed || '7' }}
+          path: results/mu-bound-probe-seed${{ github.event.inputs.seed || '7' }}
+          retention-days: 90
