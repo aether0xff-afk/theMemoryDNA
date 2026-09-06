@@ -1,116 +1,28 @@
-# Dual epigenetic-memory study
+# Legacy prototype — superseded
 
-## Research question
+> **Do not use this document as the final study protocol.**
+>
+> This was an earlier dual-memory prototype. The canonical implementation and protocol are now:
+>
+> - [`docs/FINAL_STUDY.md`](FINAL_STUDY.md)
+> - `src/memorydna/dual_memory.py`
+> - `src/memorydna/final_study.py`
+> - `run_final_study.py`
+>
+> The prototype is retained only for provenance. It shared somatic plasticity across all architectures and used a single resident-parameter `b_Wmax` target even while `mu` could evolve. The final study instead separates Silva D/E/F architectures explicitly and, in the evolved-`mu` condition, uses genotype-specific `b_Wmax(mu, epsilon)` lookup/interpolation.
 
-The GA is an experimental instrument, not the research endpoint. The biological question is:
+## Historical research question
 
-> When environmental information persists across generations, is it more useful to transmit the previous molecular state itself, or to transmit an environmentally adjusted mechanism that can regenerate that state?
+The GA was treated as an experimental instrument rather than the endpoint. This prototype asked whether transmitting the previous sRNA molecular state differs from transmitting the germline amplification state `b#`.
 
-This study separates two small-RNA inheritance channels from Silva, Otto & Immler (2021):
+## Why it was superseded
 
-1. **State memory** — direct transmission of sRNA transcripts.
-2. **Mechanism memory** — transmission of the germline amplification state `b#`.
+The prototype was useful for establishing the state-vs-mechanism distinction, but two design choices made causal interpretation weaker:
 
-## Paper-derived equations
+1. All memory architectures retained within-generation somatic Eq. 4 plasticity, making the contribution of the inherited mechanism state harder to isolate.
+2. The resident `b_Wmax` calculated at Silva's default `mu=6.798` was used even when `mu` evolved, although changing transcription can change the amplification optimum.
 
-sRNA abundance follows Silva Eq. 1:
-
-\[
-\frac{dn}{dt}=\left(\frac{b}{1+bn/m}-d\right)n+\mu.
-\]
-
-Direct transcript inheritance is
-
-\[
-n_{0,g+1}=r_{germ}n_{c,g}.
-\]
-
-All architectures share delayed somatic plasticity (Eq. 4):
-
-\[
-b^*_{t,g+1}=b^\#_{c,g}+P_b\left(b_{Wmax,g+1}-b^\#_{c,g}\right)(1-e^{-at}).
-\]
-
-For the mechanism-memory architectures, the zygote inherits the adult germline amplification state and that germline state is updated according to Silva Eqs. 5-6:
-
-\[
-b^\#_{0,g+1}=b^\#_{c,g},
-\]
-
-\[
-b^\#_{t,g+1}=b^\#_{c,g}+P_b\left(b_{Wmax,g+1}-b^\#_{c,g}\right)(1-e^{-at}).
-\]
-
-There is deliberately **no invented `r_b` parameter**. Silva models amplification-state inheritance as transmission of `b#` itself.
-
-## Four matched architectures
-
-All four permit the same within-generation Eq. 4 somatic plasticity. Only cross-generation channels differ.
-
-| architecture | transcript state `n` | amplification state `b#` |
-|---|---:|---:|
-| `no-memory` | no | no |
-| `state-memory` | yes | no |
-| `mechanism-memory` | no | yes |
-| `dual-memory` | yes | yes |
-
-Operationally, `no-memory` is strategy-D-like, `mechanism-memory` is strategy-E-like, and state/dual architectures correspond to adding direct transcript transmission to those backgrounds, a combination also examined in Silva supplementary analysis (S9).
-
-## Evolutionary layer
-
-Each population evolves the genetic variables
-
-\[
-G=(\mu,b,r_{germ},P_b),
-\]
-
-subject to the architecture constraint that `r_germ=0` when direct transcript inheritance is unavailable. Selection, arithmetic crossover and Gaussian mutation are project additions; the molecular dynamics and cross-generational state updates are paper-derived.
-
-## Experiments
-
-### A. Anchor comparison
-
-\[
-p_\epsilon\in\{0.11,0.53,0.89\}
-\]
-
-All four architectures are compared with paired random seeds. Full preset: population 160, 500 generations, 20 replicates.
-
-### B. Fine autocorrelation sweep
-
-Eleven exactly realizable balanced 20-generation cycles are used from approximately 0.05 to 0.89. Full preset: 360 generations, 10 replicates.
-
-### C. Matched-autocorrelation pattern test
-
-This is the main extension beyond a simple `p_epsilon` sweep. Every cycle contains 10 benign and 10 stressful generations and exactly five switches, so
-
-\[
-p_\epsilon=1-5/19\approx0.737.
-\]
-
-Only run-length structure differs:
-
-- `regular`: runs are distributed as evenly as possible;
-- `clustered`: long blocks plus short one-generation runs;
-- `stochastic`: random positive run-length composition.
-
-Thus any difference cannot be attributed to mean environment, state frequency, or first-order parent-offspring similarity.
-
-### D. Regime switch
-
-\[
-0.89\rightarrow0.11\rightarrow0.89.
-\]
-
-Rather than reducing the result to one recovery-time number, the analysis tracks the reorganization of fitness, `r_germ`, `P_b`, `mu`, inherited `n`, and inherited zygotic `b`.
-
-## Interpretation boundaries
-
-- `P_b` is a plasticity-strength parameter in the Silva equations; it is not itself an inherited transcript.
-- `b#` inheritance and transcript inheritance are distinct molecular information channels.
-- The absolute evolved values of `mu`, `b`, `r_germ`, and `P_b` remain conditional on the GA parameter bounds and mutation model.
-- A higher-fitness architecture does not prove that the corresponding biological mechanism is universally superior; it is a result under the specified Silva fitness function and environmental process.
-- Bet-hedging via evolution of offspring epigenetic variance is intentionally left for follow-up work so that this study retains one primary question.
+The final study corrects both issues and adds explicit paper-bound (`mu=6.798`) and co-evolution (`mu` evolves) regimes.
 
 ## Primary source
 
