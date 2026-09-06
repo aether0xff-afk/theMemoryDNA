@@ -1,0 +1,67 @@
+name: Final Dual-Memory Study Full
+
+on:
+  workflow_dispatch:
+    inputs:
+      seed:
+        description: "Base seed"
+        required: true
+        default: "7"
+  push:
+    branches:
+      - feature/dual-memory-final-study
+    paths:
+      - ".github/workflows/final-study-full.yml"
+
+jobs:
+  full:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      MPLBACKEND: Agg
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install project
+        run: pip install -e ".[dev]"
+
+      - name: Validate complete model
+        run: pytest -q
+
+      - name: Run full final study
+        shell: bash
+        run: |
+          SEED="${{ github.event.inputs.seed || '7' }}"
+          python run_final_study.py --preset full --seed "$SEED" --output "results/final-dual-memory-full-seed${SEED}"
+
+      - name: Print machine summary
+        shell: bash
+        run: |
+          SEED="${{ github.event.inputs.seed || '7' }}"
+          cat "results/final-dual-memory-full-seed${SEED}/FINAL_RESULTS.md"
+          echo "=== paired effects ==="
+          cat "results/final-dual-memory-full-seed${SEED}/paired_effects.csv"
+
+      - name: Audit final outputs
+        shell: bash
+        run: |
+          SEED="${{ github.event.inputs.seed || '7' }}"
+          ROOT="results/final-dual-memory-full-seed${SEED}"
+          for f in architecture_history.csv architecture_summary.csv paired_effects.csv pattern_history.csv pattern_summary.csv regime_history.csv metadata.json FINAL_RESULTS.md; do
+            test -s "$ROOT/$f"
+          done
+          find "$ROOT" -maxdepth 1 -type f -print | sort
+
+      - name: Upload full final-study artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: final-dual-memory-full-seed${{ github.event.inputs.seed || '7' }}
+          path: results/final-dual-memory-full-seed${{ github.event.inputs.seed || '7' }}
+          retention-days: 90
