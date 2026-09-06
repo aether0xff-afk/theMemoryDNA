@@ -1,0 +1,119 @@
+name: Dual Epigenetic Memory Study
+
+on:
+  workflow_dispatch:
+    inputs:
+      preset:
+        description: "Experiment scale"
+        required: true
+        default: "full"
+        type: choice
+        options: [full, quick, smoke]
+      seed:
+        description: "Base random seed"
+        required: true
+        default: "7"
+        type: string
+  push:
+    branches:
+      - main
+      - feature/dual-epigenetic-memory-v2
+    paths:
+      - "src/memorydna/model.py"
+      - "src/memorydna/ga.py"
+      - "src/memorydna/memory_architecture.py"
+      - "src/memorydna/memory_environment.py"
+      - "src/memorydna/memory_study.py"
+      - "run_memory_study.py"
+      - "tests/test_memory_architecture.py"
+      - ".github/workflows/memory-study.yml"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install
+        run: pip install -e ".[dev]"
+      - name: Unit and regression tests
+        run: pytest -q
+      - name: Smoke every study component
+        shell: bash
+        run: |
+          set -euo pipefail
+          for component in anchor fine patterns switch; do
+            python run_memory_study.py \
+              --component "$component" \
+              --preset smoke \
+              --seed 7 \
+              --output "results/smoke-$component"
+          done
+      - name: Upload smoke results
+        uses: actions/upload-artifact@v4
+        with:
+          name: dual-memory-smoke
+          path: results/smoke-*
+          retention-days: 30
+
+  study:
+    needs: validate
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    strategy:
+      fail-fast: false
+      matrix:
+        component: [anchor, fine, patterns, switch]
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    env:
+      MPLBACKEND: Agg
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install
+        run: pip install -e ".[dev]"
+      - name: Run component
+        shell: bash
+        run: |
+          PRESET="${{ github.event.inputs.preset || 'full' }}"
+          SEED="${{ github.event.inputs.seed || '7' }}"
+          python run_memory_study.py \
+            --component "${{ matrix.component }}" \
+            --preset "$PRESET" \
+            --seed "$SEED" \
+            --output "results/${{ matrix.component }}"
+      - name: Show outputs
+        if: always()
+        run: find results -type f -maxdepth 3 -print | sort || true
+      - name: Upload component
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dual-memory-${{ matrix.component }}-${{ github.event.inputs.preset || 'full' }}-seed${{ github.event.inputs.seed || '7' }}
+          path: results/${{ matrix.component }}
+          if-no-files-found: error
+          retention-days: 90
+
+  bundle:
+    needs: study
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download study artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: dual-memory-*-${{ github.event.inputs.preset || 'full' }}-seed${{ github.event.inputs.seed || '7' }}
+          path: bundle
+      - name: Upload complete bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: dual-memory-complete-${{ github.event.inputs.preset || 'full' }}-seed${{ github.event.inputs.seed || '7' }}
+          path: bundle
+          retention-days: 90
