@@ -22,6 +22,11 @@ on:
       - main
     paths:
       - ".github/workflows/full-experiment.yml"
+      - "src/memorydna/model.py"
+      - "src/memorydna/ga.py"
+      - "src/memorydna/environment.py"
+      - "src/memorydna/experiments.py"
+      - "run_experiments.py"
 
 jobs:
   full-experiment:
