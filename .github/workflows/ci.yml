@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install
+        run: pip install -e ".[dev]"
+      - name: Test
+        run: pytest -q
+      - name: Smoke experiment
+        run: python run_experiments.py --preset smoke --seed 7 --output results/ci-smoke
+      - name: Upload smoke outputs
+        uses: actions/upload-artifact@v4
+        with:
+          name: memorydna-smoke-results
+          path: results/ci-smoke
