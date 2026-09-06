@@ -46,3 +46,36 @@ def test_reference_b_optimum_is_environment_dependent():
     b_stress = reference_optimal_b(0.9, params)
     assert b_benign <= b_stress
     assert b_stress > 0.0
+
+
+def _strategy_c_longrun_logfitness(r_germ: float, params: SilvaParameters) -> float:
+    """Long-run 50:50 environmental fitness for paper Strategy C."""
+    n_initial = np.array([0.0])
+    mu = np.array([params.mu])
+    b = np.array([0.0])
+    p = np.array([0.0])
+
+    # With b=0 and fixed mu, sRNA dynamics are environment independent. Iterate
+    # transmission until the zygotic sRNA state reaches its periodic fixed point.
+    for _ in range(80):
+        _, n_final = simulate_development(n_initial, mu, b, p, 0.1, 0.0, params)
+        n_initial = inherited_srna(n_final, r_germ)
+
+    low, _ = simulate_development(n_initial, mu, b, p, 0.1, 0.0, params)
+    high, _ = simulate_development(n_initial, mu, b, p, 0.9, 0.0, params)
+    return 0.5 * (float(low[0]) + float(high[0]))
+
+
+def test_strategy_c_transmission_is_advantageous_and_optimal_near_point_one():
+    """Regression against Silva Fig. 3 / S5: direct transmission should help.
+
+    The paper reports a selective advantage for Strategy C at mu=6.798 and an
+    optimum r_germ around 0.1 in the related two-dimensional S5 landscape.
+    This test guards the early-life fitness contribution at t=0.
+    """
+    params = SilvaParameters(rk4_substeps=1)
+    r_grid = np.linspace(0.0, 0.25, 26)
+    scores = np.array([_strategy_c_longrun_logfitness(float(r), params) for r in r_grid])
+    best_r = float(r_grid[int(np.argmax(scores))])
+    assert scores.max() > scores[0]
+    assert 0.05 <= best_r <= 0.15
