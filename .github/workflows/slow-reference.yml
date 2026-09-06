@@ -1,0 +1,35 @@
+name: Slow-Dynamics Memory Sensitivity
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "src/memorydna/slow_reference.py"
+      - "run_slow_reference.py"
+      - ".github/workflows/slow-reference.yml"
+
+jobs:
+  slow-reference:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      MPLBACKEND: Agg
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -e ".[dev]"
+      - name: Regression tests
+        run: pytest -q
+      - name: Run 1.0x versus 0.75x reference
+        run: python run_slow_reference.py
+      - name: Print best strategies
+        run: cat results/slow-reference/slow_reference_best.csv
+      - uses: actions/upload-artifact@v4
+        with:
+          name: slow-dynamics-memory-reference-seed7
+          path: results/slow-reference
+          retention-days: 90
