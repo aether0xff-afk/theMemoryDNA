@@ -1,0 +1,13 @@
+target_p_epsilon,architecture,r_germ,p_b,fitness_mean,fitness_sd_across_environments
+0.11,no-memory,0,1,0.438950,0
+0.11,state-memory,0.11,0,0.491689,0
+0.11,mechanism-memory,0,0,0.438937,0
+0.11,dual-memory,0.11,0,0.491689,0
+0.53,no-memory,0,1,0.438950,0
+0.53,state-memory,0.11,0,0.491689,0
+0.53,mechanism-memory,0,0,0.438937,0
+0.53,dual-memory,0.11,0,0.491689,0
+0.89,no-memory,0,1,0.438950,0
+0.89,state-memory,0.11,0,0.491689,0
+0.89,mechanism-memory,0,1,0.439458,0
+0.89,dual-memory,0.11,0,0.491689,0
