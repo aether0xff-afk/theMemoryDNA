@@ -41,13 +41,13 @@ def srna_rhs(n: np.ndarray | float, mu: np.ndarray | float, b: np.ndarray | floa
 
 
 def srna_phenotype(n: np.ndarray | float, *, h: float = 5.0):
-    """Logistic sRNA phenotype used inside Silva et al. Eq. 7."""
+    """Silva et al. Eq. 7 sRNA phenotype term."""
 
     n_arr = np.asarray(n, dtype=float)
-    # Stable logistic of (n-h). For the parameter ranges here clipping is mostly
-    # precautionary, but it avoids overflow in pathological GA mutations.
-    z = np.clip(h - n_arr, -700.0, 700.0)
-    return 1.0 / (1.0 + np.exp(z))
+    # Exact phenotype in Eq. 7: (exp(n)-1)/(exp(n)+exp(h)-2).
+    # Divide numerator and denominator by exp(n) for numerical stability.
+    exp_neg_n = np.exp(-np.clip(n_arr, 0.0, 700.0))
+    return (1.0 - exp_neg_n) / (1.0 + (np.exp(h) - 2.0) * exp_neg_n)
 
 
 def log_instantaneous_fitness(
@@ -58,20 +58,17 @@ def log_instantaneous_fitness(
 ):
     """Natural log of Silva et al. Eq. 7.
 
-    The multiplicative fitness is represented in log space for numerical
-    stability. This reproduces the paper's reported instantaneous optima near
-    n≈2.85 for ε=0.1 and n≈7.19 for ε=0.9 under the default parameters.
+    Eq. 7 is evaluated in log space for numerical stability. This reproduces
+    the paper's reported instantaneous optima near n≈2.85 for ε=0.1 and
+    n≈7.19 for ε=0.9 under the default parameters.
     """
 
     n_arr = np.asarray(n, dtype=float)
     p_arr = np.asarray(p_b, dtype=float)
     phenotype = srna_phenotype(n_arr, h=params.h)
     mismatch = epsilon - phenotype
-    return (
-        -params.c_n * n_arr
-        -params.c_b * p_arr
-        - (params.beta + params.alpha * epsilon) * mismatch * mismatch
-    )
+    cost = np.log1p(params.c_n * n_arr + params.c_b * p_arr)
+    return -cost - (params.beta + params.alpha * epsilon) * mismatch * mismatch
 
 
 def instantaneous_fitness(
